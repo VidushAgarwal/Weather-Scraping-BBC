@@ -13,40 +13,52 @@ from datetime import datetime
 import streamlit as st
 
 st.title("Weather Information")
+location=""
 location=st.text_input("Enter City you want to search")
 
-required_city = location
-location_url = 'https://locator-service.api.bbci.co.uk/locations?' + urlencode({
-   'api_key': 'AGbFAKx58hyjQScCXIYrxuEwJh2W2cmv',
-   's': required_city,
-   'stack': 'aws',
-   'locale': 'en',
-   'filter': 'international',
-   'place-types': 'settlement,airport,district',
-   'order': 'importance',
-   'a': 'true',
-   'format': 'json'
-})
+if len(location)>0:
+   required_city = location
+   location_url = 'https://locator-service.api.bbci.co.uk/locations?' + urlencode({
+      'api_key': 'AGbFAKx58hyjQScCXIYrxuEwJh2W2cmv',
+      's': required_city,
+      'stack': 'aws',
+      'locale': 'en',
+      'filter': 'international',
+      'place-types': 'settlement,airport,district',
+      'order': 'importance',
+      'a': 'true',
+      'format': 'json'
+   })
+   #location_url
 
-result = requests.get(location_url).json()
+   result = requests.get(location_url).json()
+   if len(result['response']['results']['results'])>0:
+      url      = 'https://www.bbc.com/weather/'+result['response']['results']['results'][0]['id']
+      response = requests.get(url)
+      l=result['response']['results']['results'][0]['name']
+      soup = BeautifulSoup(response.content,'html.parser') 
 
-url      = 'https://www.bbc.com/weather/'+result['response']['results']['results'][0]['id']
-response = requests.get(url)
+      daily_high_values = soup.find_all('span', attrs={'class': 'wr-day-temperature__high-value'}) # block-type: span; identifier type: class; and class name: wr-day-temperature__high-value 
+      daily_low_values  = soup.find_all('span', attrs={'class': 'wr-day-temperature__low-value'})
+      daily_summary = soup.find('div', attrs={'class': 'wr-day-summary'})
 
-soup = BeautifulSoup(response.content,'html.parser') 
+      daily_high_values_list = [daily_high_values[i].text.strip().split()[0] for i in range(len(daily_high_values))]
+      daily_low_values_list = [daily_low_values[i].text.strip().split()[0] for i in range(len(daily_low_values))]
+      daily_summary_list = re.findall('[a-zA-Z][^A-Z]*', daily_summary.text) #split the string on uppercase
 
-daily_high_values = soup.find_all('span', attrs={'class': 'wr-day-temperature__high-value'}) # block-type: span; identifier type: class; and class name: wr-day-temperature__high-value 
-daily_low_values  = soup.find_all('span', attrs={'class': 'wr-day-temperature__low-value'})
-daily_summary = soup.find('div', attrs={'class': 'wr-day-summary'})
+      datelist = pd.date_range(datetime.today(), periods=len(daily_high_values)).tolist()
+      datelist = [datelist[i].date().strftime('%y-%m-%d') for i in range(len(datelist))]
 
-daily_high_values_list = [daily_high_values[i].text.strip().split()[0] for i in range(len(daily_high_values))]
-daily_low_values_list = [daily_low_values[i].text.strip().split()[0] for i in range(len(daily_low_values))]
-daily_summary_list = re.findall('[a-zA-Z][^A-Z]*', daily_summary.text) #split the string on uppercase
+      zipped = zip(datelist, daily_high_values_list, daily_low_values_list, daily_summary_list)
+      df = pd.DataFrame(list(zipped), columns=['Date', 'High','Low', 'Summary'])
+      st.dataframe(df)
 
-datelist = pd.date_range(datetime.today(), periods=len(daily_high_values)).tolist()
-datelist = [datelist[i].date().strftime('%y-%m-%d') for i in range(len(datelist))]
 
-zipped = zip(datelist, daily_high_values_list, daily_low_values_list, daily_summary_list)
-df = pd.DataFrame(list(zipped), columns=['Date', 'High','Low', 'Summary'])
-
-st.dataframe(df)
+      if l.lower()!=location.lower():
+         st.write("City not found, showing data for ", l)
+      else:
+         st.write("Showing data for ", l)
+   else:
+      st.write("City not found, try partially entering city")
+else:
+   st.write("Please enter a city")
