@@ -50,9 +50,4 @@ datelist = [datelist[i].date().strftime('%y-%m-%d') for i in range(len(datelist)
 zipped = zip(datelist, daily_high_values_list, daily_low_values_list, daily_summary_list)
 df = pd.DataFrame(list(zipped), columns=['Date', 'High','Low', 'Summary'])
 
-#print(df)
-
-filename_csv = location+'.csv'
-df.to_csv(filename_csv, index=None)
-
 st.dataframe(df)
