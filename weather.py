@@ -27,7 +27,6 @@ location_url = 'https://locator-service.api.bbci.co.uk/locations?' + urlencode({
    'a': 'true',
    'format': 'json'
 })
-location_url
 
 result = requests.get(location_url).json()
 
